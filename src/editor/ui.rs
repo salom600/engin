@@ -83,7 +83,9 @@ fn do_new_scene(state: &mut EditorState, commands: &mut Commands, spawner: fn(&m
 // ---------------------------------------------------------------------------
 
 pub fn menu_bar(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut commands: Commands) {
-    let ctx = contexts.ctx_mut();
+    let Some(ctx) = contexts.try_ctx_mut() else {
+        return;
+    };
 
     if !state.theme_applied {
         let mut visuals = egui::Visuals::dark();
@@ -228,7 +230,9 @@ fn panel_toggle(ui: &mut egui::Ui, panels: &mut Panels) {
 // ---------------------------------------------------------------------------
 
 pub fn toolbar(mut contexts: EguiContexts, mut state: ResMut<EditorState>) {
-    let ctx = contexts.ctx_mut();
+    let Some(ctx) = contexts.try_ctx_mut() else {
+        return;
+    };
     egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
         ui.add_space(2.0);
         ui.horizontal_wrapped(|ui| {
@@ -346,7 +350,9 @@ pub fn status_bar(
     diagnostics: Option<Res<bevy::diagnostic::DiagnosticsStore>>,
     adapter: Option<Res<RenderAdapterInfo>>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Some(ctx) = contexts.try_ctx_mut() else {
+        return;
+    };
     egui::TopBottomPanel::bottom("status_bar")
         .exact_height(20.0)
         .show(ctx, |ui| {
@@ -408,7 +414,9 @@ pub fn hierarchy_panel(
     q: HierarchyQuery,
     q_count: Query<Entity, With<SceneEntity>>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Some(ctx) = contexts.try_ctx_mut() else {
+        return;
+    };
     egui::SidePanel::left("hierarchy_panel")
         .resizable(true)
         .min_width(180.0)
@@ -626,7 +634,9 @@ pub fn inspector_panel(
     mut q_rot: Query<&mut Rotator>,
     mut q_bob: Query<&mut Bobber>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Some(ctx) = contexts.try_ctx_mut() else {
+        return;
+    };
     egui::SidePanel::right("inspector_panel")
         .resizable(true)
         .min_width(220.0)
@@ -974,7 +984,9 @@ pub fn game_view_panel(
     let Some(texture_id) = contexts.image_id(&image.0) else {
         return;
     };
-    let ctx = contexts.ctx_mut();
+    let Some(ctx) = contexts.try_ctx_mut() else {
+        return;
+    };
     let image_size = state.viewport.image_size;
 
     egui::CentralPanel::default().show(ctx, |ui| {
@@ -1124,7 +1136,9 @@ pub fn bottom_dock(
     mut commands: Commands,
     mut browser: ResMut<AssetBrowser>,
 ) {
-    let ctx = contexts.ctx_mut();
+    let Some(ctx) = contexts.try_ctx_mut() else {
+        return;
+    };
     if state.refresh_assets {
         browser.root = scan_dir(std::path::Path::new("assets"), 0);
         browser.scanned = true;
@@ -1341,7 +1355,9 @@ fn console_ui(ui: &mut egui::Ui, state: &mut EditorState) {
 // ---------------------------------------------------------------------------
 
 pub fn shortcuts(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut commands: Commands) {
-    let ctx = contexts.ctx_mut();
+    let Some(ctx) = contexts.try_ctx_mut() else {
+        return;
+    };
     if ctx.wants_keyboard_input() {
         return;
     }
