@@ -22,9 +22,9 @@ use std::path::PathBuf;
 // ---------------------------------------------------------------------------
 
 /// Minimum guaranteed width of the central Game View.
-const CENTRAL_MIN_WIDTH: f32 = 200.0;
+const CENTRAL_MIN_WIDTH: f32 = 280.0;
 /// Minimum guaranteed height of the central Game View.
-const CENTRAL_MIN_HEIGHT: f32 = 200.0;
+const CENTRAL_MIN_HEIGHT: f32 = 240.0;
 /// Space used by the fixed menu bar + toolbar + status bar (plus margins).
 const BARS_RESERVE: f32 = 100.0;
 const HIERARCHY_MIN_WIDTH: f32 = 180.0;
@@ -114,6 +114,7 @@ pub fn menu_bar(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut 
         // framing, so the editor opens exactly as the user left it.
         if let Some(memory) = crate::settings::load_egui_memory() {
             ctx.memory_mut(|m| *m = memory);
+            info!("Restored egui layout from disk");
         }
         if let Some(saved) = crate::settings::load() {
             state.panels.hierarchy = saved.hierarchy;
@@ -209,6 +210,15 @@ pub fn menu_bar(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut 
                 ui.checkbox(&mut state.show_grid, "Show Grid");
                 ui.checkbox(&mut state.show_selection_gizmo, "Selection Outline");
                 ui.checkbox(&mut state.show_light_gizmos, "Light Markers");
+                ui.separator();
+                if ui.button("Reset Layout").clicked() {
+                    // Clear all stored egui panel state so every panel reverts
+                    // to its default_width / default_height next frame.
+                    ui.ctx().memory_mut(|m| m.areas = Default::default());
+                    state.hierarchy_width = 270.0;
+                    state.inspector_width = 330.0;
+                    ui.close_menu();
+                }
             });
 
             ui.menu_button("Help", |ui| {
@@ -458,16 +468,18 @@ pub fn hierarchy_panel(
     let Some(ctx) = contexts.try_ctx_mut() else {
         return;
     };
-    // Never let this panel (plus the inspector's current width) squeeze the
-    // central Game View below CENTRAL_MIN_WIDTH.
+    // Fixed cap based on whether the other side panel is *visible* — does NOT
+    // depend on the other panel's current width, so resizing one panel never
+    // causes the other to snap back.  When both panels are visible each is
+    // capped at 40 % of the screen, guaranteeing >= 20 % for the Game View.
+    // When the other panel is hidden the remaining one can use almost the full
+    // width minus the central minimum.
     let screen_width = ctx.screen_rect().width();
-    let inspector = if state.panels.inspector {
-        state.inspector_width
+    let max_width = if state.panels.inspector {
+        (screen_width * 0.40).max(HIERARCHY_MIN_WIDTH)
     } else {
-        0.0
+        (screen_width - CENTRAL_MIN_WIDTH).max(HIERARCHY_MIN_WIDTH)
     };
-    let max_width =
-        (screen_width - CENTRAL_MIN_WIDTH - inspector).max(HIERARCHY_MIN_WIDTH);
     let panel = egui::SidePanel::left("hierarchy_panel")
         .resizable(true)
         .width_range(HIERARCHY_MIN_WIDTH..=max_width)
@@ -689,16 +701,13 @@ pub fn inspector_panel(
     let Some(ctx) = contexts.try_ctx_mut() else {
         return;
     };
-    // Never let this panel (plus the hierarchy's current width) squeeze the
-    // central Game View below CENTRAL_MIN_WIDTH.
+    // See hierarchy_panel for the rationale on the fixed cap.
     let screen_width = ctx.screen_rect().width();
-    let hierarchy = if state.panels.hierarchy {
-        state.hierarchy_width
+    let max_width = if state.panels.hierarchy {
+        (screen_width * 0.40).max(INSPECTOR_MIN_WIDTH)
     } else {
-        0.0
+        (screen_width - CENTRAL_MIN_WIDTH).max(INSPECTOR_MIN_WIDTH)
     };
-    let max_width =
-        (screen_width - CENTRAL_MIN_WIDTH - hierarchy).max(INSPECTOR_MIN_WIDTH);
     let panel = egui::SidePanel::right("inspector_panel")
         .resizable(true)
         .width_range(INSPECTOR_MIN_WIDTH..=max_width)
