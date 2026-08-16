@@ -272,6 +272,7 @@ pub struct EditorPlugin;
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<EditorState>()
+            .init_resource::<ui::AssetBrowser>()
             .register_type::<PrimitiveShape>()
             .register_type::<PrimitiveMesh>()
             .register_type::<PbrDef>()
