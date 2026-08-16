@@ -21,10 +21,10 @@ fn main() {
         Some(s) => Window {
             title: "Bevy Editor".to_string(),
             resolution: (s.window.width, s.window.height).into(),
-            position: s
-                .window
-                .position
-                .map(|(x, y)| bevy::window::WindowPosition::At(IVec2::new(x, y))),
+            position: match s.window.position {
+                Some((x, y)) => bevy::window::WindowPosition::At(IVec2::new(x, y)),
+                None => bevy::window::WindowPosition::Automatic,
+            },
             ..default()
         },
         None => Window {

@@ -105,7 +105,7 @@ fn duplicate_tree_inner(
     if !world.entities().contains(source) {
         return None;
     }
-    let original_parent = world.get::<ChildOf>(source).map(|p| p.get());
+    let original_parent = world.get::<ChildOf>(source).map(|p| p.parent());
     let children: Vec<Entity> = world
         .get::<Children>(source)
         .map(|c| c.to_vec())
@@ -119,7 +119,7 @@ fn duplicate_tree_inner(
         }
     });
 
-    let mut entity = world.spawn((
+    let entity = world.spawn((
         name.unwrap_or_else(|| Name::new("Entity")),
         Transform::default(),
         Visibility::default(),

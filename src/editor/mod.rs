@@ -890,7 +890,7 @@ pub fn handle_request(world: &mut World, request: EditorRequest) {
                     None => true,
                 };
                 if valid {
-                    if let Some(old) = world.get::<ChildOf>(child).map(|p| p.get()) {
+                    if let Some(old) = world.get::<ChildOf>(child).map(|p| p.parent()) {
                         if world.entities().contains(old) {
                             world.entity_mut(old).remove_children(&[child]);
                         }
@@ -959,7 +959,7 @@ fn in_subtree(world: &World, root: Entity, entity: Entity) -> bool {
             return true;
         }
         match world.get::<ChildOf>(current) {
-            Some(parent) => current = parent.get(),
+            Some(parent) => current = parent.parent(),
             None => return false,
         }
     }

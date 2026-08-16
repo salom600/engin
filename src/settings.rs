@@ -9,7 +9,6 @@
 //! re-applied on the next launch so the editor always comes back exactly the
 //! way the user left it.
 
-use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 const SETTINGS_FILE: &str = "editor_settings.ron";

@@ -385,7 +385,7 @@ pub fn toolbar(mut contexts: EguiContexts, mut state: ResMut<EditorState>) {
 
 pub fn status_bar(
     mut contexts: EguiContexts,
-    mut state: ResMut<EditorState>,
+    state: ResMut<EditorState>,
     q_names: Query<&Name>,
     q_all_entities: Query<Entity>,
     diagnostics: Option<Res<bevy::diagnostic::DiagnosticsStore>>,
@@ -675,9 +675,9 @@ pub fn inspector_panel(
     mut contexts: EguiContexts,
     mut state: ResMut<EditorState>,
     mut commands: Commands,
-    mut q_names: Query<&mut Name>,
+    q_names: Query<&mut Name>,
     mut q_transforms: Query<&mut Transform>,
-    mut q_vis: Query<&mut Visibility>,
+    q_vis: Query<&mut Visibility>,
     mut q_meshes: Query<&mut PrimitiveMesh>,
     mut q_pbr: Query<&mut PbrDef>,
     mut q_dl: Query<&mut DirectionalLight>,
