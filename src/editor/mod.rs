@@ -3,8 +3,10 @@
 
 pub mod ui;
 
+use crate::components;
 use crate::components::*;
 use crate::{demo, scene_io};
+use bevy::hierarchy::Parent;
 use bevy::prelude::*;
 use bevy::render::camera::{Camera, RenderTarget};
 use bevy::render::render_resource::{
@@ -292,7 +294,20 @@ impl Plugin for EditorPlugin {
             .add_systems(Update, (components::rotator_system, components::bobber_system))
             .add_systems(Update, editor_camera_system)
             .add_systems(Update, (picking_system, tool_drag_system, gizmos_system).chain())
-            .add_systems(bevy_egui::EguiContextPass, ui::panels_systems());
+            .add_systems(
+                bevy_egui::EguiContextPass,
+                (
+                    ui::menu_bar,
+                    ui::toolbar,
+                    ui::status_bar,
+                    ui::bottom_dock,
+                    ui::hierarchy_panel,
+                    ui::inspector_panel,
+                    ui::game_view_panel,
+                    ui::shortcuts,
+                )
+                    .chain(),
+            )
     }
 }
 
@@ -400,7 +415,7 @@ fn resize_game_view_system(
 fn editor_camera_system(
     mut state: ResMut<EditorState>,
     mut q_cam: Query<(&mut Transform, &GlobalTransform), With<EditorCamera>>,
-    q_selected: Query<(&GlobalTransform, Option<&PrimitiveMesh>), With<SceneRoot>>,
+    q_selected: Query<(&GlobalTransform, Option<&PrimitiveMesh>), With<SceneEntity>>,
 ) {
     let Ok((mut transform, global)) = q_cam.single_mut() else {
         return;
@@ -461,7 +476,7 @@ fn picking_system(
             Option<&DirectionalLight>,
             Option<&SpotLight>,
         ),
-        With<SceneRoot>,
+        With<SceneEntity>,
     >,
 ) {
     state.hovered_entity = None;
@@ -647,7 +662,7 @@ fn ray_plane(ray: Ray3d, point: Vec3, normal: Vec3) -> Option<Vec3> {
 fn gizmos_system(
     state: Res<EditorState>,
     mut gizmos: Gizmos,
-    q_scene: Query<(Entity, &GlobalTransform, Option<&PrimitiveMesh>), With<SceneRoot>>,
+    q_scene: Query<(Entity, &GlobalTransform, Option<&PrimitiveMesh>), With<SceneEntity>>,
     q_lights: Query<
         (
             Entity,
@@ -801,7 +816,7 @@ pub fn handle_request(world: &mut World, request: EditorRequest) {
                 }
                 for spawned in map.values() {
                     if let Ok(mut entity) = world.get_entity_mut(*spawned) {
-                        entity.insert(SceneRoot);
+                        entity.insert(SceneEntity);
                     }
                 }
                 info!("Play mode stopped (scene restored)");

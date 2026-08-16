@@ -61,7 +61,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y libasound2-dev libudev-dev pkg-config libxkbcommon-dev
+          sudo apt-get install --no-install-recommends -y libasound2-dev libudev-dev pkg-config libxkbcommon-dev libwayland-dev
 
       - uses: dtolnay/rust-toolchain@stable
 

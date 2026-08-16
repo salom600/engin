@@ -7,16 +7,17 @@
 
 use crate::components::*;
 use bevy::ecs::entity::EntityHashMap;
+use bevy::hierarchy::{Children, Parent};
 use bevy::prelude::*;
 use bevy::scene::DynamicSceneBuilder;
 use std::path::Path;
 
 pub type SceneIoResult<T> = Result<T, String>;
 
-/// Builds a snapshot of every `SceneRoot` entity.
+/// Builds a snapshot of every `SceneEntity` entity.
 pub fn snapshot_scene(world: &World) -> DynamicScene {
     let entities: Vec<Entity> = world
-        .query_filtered::<Entity, With<SceneRoot>>()
+        .query_filtered::<Entity, With<SceneEntity>>()
         .iter(world)
         .collect();
 
@@ -44,7 +45,7 @@ pub fn snapshot_scene(world: &World) -> DynamicScene {
 /// Despawns every scene entity.
 pub fn clear_scene(world: &mut World) {
     let roots: Vec<Entity> = world
-        .query_filtered::<Entity, (With<SceneRoot>, Without<Parent>)>()
+        .query_filtered::<Entity, (With<SceneEntity>, Without<Parent>)>()
         .iter(world)
         .collect();
     for entity in roots {
@@ -77,7 +78,7 @@ pub fn load_scene(world: &mut World, path: &Path) -> SceneIoResult<usize> {
         .map_err(|e| format!("cannot spawn scene: {e}"))?;
     for spawned in map.values() {
         if let Ok(mut entity) = world.get_entity_mut(*spawned) {
-            entity.insert(SceneRoot);
+            entity.insert(SceneEntity);
         }
     }
     Ok(map.len())
@@ -116,7 +117,7 @@ fn duplicate_tree_inner(
         name.unwrap_or_else(|| Name::new("Entity")),
         Transform::default(),
         Visibility::default(),
-        SceneRoot,
+        SceneEntity,
     ));
     let new_id = entity.id();
 

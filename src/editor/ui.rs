@@ -5,28 +5,13 @@ use crate::editor::{CompKind, EditorRequest, EditorState, Panels, PlayState, Too
 use crate::log_layer;
 use crate::{demo, scene_io};
 use bevy::ecs::entity::Entities;
-use bevy::ecs::schedule::SystemConfigs;
+use bevy::hierarchy::{Children, Parent};
 use bevy::prelude::*;
 use bevy::render::renderer::RenderAdapterInfo;
 use bevy::window::Window;
 use bevy_egui::{egui, EguiContexts};
 use bevy::math::EulerRot;
 use std::path::PathBuf;
-
-/// UI systems, in egui layout order (top panels first, central last).
-pub fn panels_systems() -> SystemConfigs {
-    (
-        menu_bar,
-        toolbar,
-        status_bar,
-        bottom_dock,
-        hierarchy_panel,
-        inspector_panel,
-        game_view_panel,
-        shortcuts,
-    )
-        .chain()
-}
 
 // ---------------------------------------------------------------------------
 // File dialog helpers
@@ -404,7 +389,7 @@ fn status_bar(
 // Hierarchy
 // ---------------------------------------------------------------------------
 
-type HierarchyQuery = Query<(
+type HierarchyQuery<'a> = Query<'a, 'a, (
     Entity,
     Option<&Name>,
     Option<&Children>,
@@ -423,7 +408,7 @@ fn hierarchy_panel(
     mut state: ResMut<EditorState>,
     mut commands: Commands,
     q: HierarchyQuery,
-    q_count: Query<Entity, With<SceneRoot>>,
+    q_count: Query<Entity, With<SceneEntity>>,
 ) {
     let ctx = contexts.ctx_mut();
     egui::SidePanel::left("hierarchy_panel")

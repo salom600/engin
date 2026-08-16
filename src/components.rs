@@ -9,7 +9,7 @@
 
 use crate::editor::{EditorState, PlayState};
 use bevy::prelude::*;
-use bevy::render::render_resource::FaceCullMode;
+use bevy::render::render_resource::Face;
 
 // ---------------------------------------------------------------------------
 // Marker components
@@ -17,7 +17,7 @@ use bevy::render::render_resource::FaceCullMode;
 
 /// Marks every entity that belongs to the user's scene (saved / loaded / snapshotted).
 #[derive(Component, Debug, Clone, Copy)]
-pub struct SceneRoot;
+pub struct SceneEntity;
 
 /// Marks editor-internal entities (editor camera etc.) — hidden from the UI.
 #[derive(Component, Debug, Clone, Copy)]
@@ -111,11 +111,7 @@ impl From<&PbrDef> for StandardMaterial {
             metallic: def.metallic,
             perceptual_roughness: def.perceptual_roughness,
             unlit: def.unlit,
-            cull_mode: if def.double_sided {
-                FaceCullMode::None
-            } else {
-                FaceCullMode::Back
-            },
+            cull_mode: if def.double_sided { None } else { Some(Face::Back) },
             ..default()
         }
     }
@@ -225,7 +221,7 @@ pub fn spawn_scene_entity(world: &mut World, name: &str, kind: SpawnKind, transl
         Name::new(name.to_string()),
         Transform::from_translation(translation),
         Visibility::default(),
-        SceneRoot,
+        SceneEntity,
     ));
     match kind {
         SpawnKind::Empty => {}
