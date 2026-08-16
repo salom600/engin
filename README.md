@@ -3,6 +3,20 @@
 A visual engine interface (scene editor) for the [Bevy engine](https://bevyengine.org),
 built with **bevy 0.16.1** and **bevy_egui 0.34.1**.
 
+**CI:** every push builds release binaries for Windows and Linux on GitHub Actions
+(with dependency caching), attaches them as run artifacts and refreshes the
+rolling [`build-latest` release](https://github.com/salom600/engin/releases/tag/build-latest):
+
+- Windows: `bevy_editor_windows.zip` (contains `bevy_editor.exe` + `assets/`)
+- Linux: `bevy_editor_linux.zip`
+
+## Quick start (prebuilt)
+
+1. Download `bevy_editor_windows.zip` from the
+   [Latest build release](https://github.com/salom600/engin/releases/tag/build-latest).
+2. Extract anywhere and run `bevy_editor.exe` (keep `assets/` next to it).
+3. Build from source with `cargo run --release`.
+
 It provides the panels and workflow you know from engines like Unity or Godot:
 
 | Panel | What it does |
