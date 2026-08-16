@@ -293,20 +293,16 @@ impl Plugin for EditorPlugin {
             .add_systems(Update, (components::rotator_system, components::bobber_system))
             .add_systems(Update, editor_camera_system)
             .add_systems(Update, (picking_system, tool_drag_system, gizmos_system).chain())
-            .add_systems(
-                bevy_egui::EguiContextPass,
-                (
-                    ui::menu_bar,
-                    ui::toolbar,
-                    ui::status_bar,
-                    ui::bottom_dock,
-                    ui::hierarchy_panel,
-                    ui::inspector_panel,
-                    ui::game_view_panel,
-                    ui::shortcuts,
-                )
-                    .chain(),
-            );
+            // Each system is registered individually with explicit ordering so egui
+            // panel layout order is deterministic (top panels first, central last).
+            .add_systems(bevy_egui::EguiContextPass, ui::menu_bar)
+            .add_systems(bevy_egui::EguiContextPass, ui::toolbar.after(ui::menu_bar))
+            .add_systems(bevy_egui::EguiContextPass, ui::status_bar.after(ui::toolbar))
+            .add_systems(bevy_egui::EguiContextPass, ui::bottom_dock.after(ui::status_bar))
+            .add_systems(bevy_egui::EguiContextPass, ui::hierarchy_panel.after(ui::bottom_dock))
+            .add_systems(bevy_egui::EguiContextPass, ui::inspector_panel.after(ui::hierarchy_panel))
+            .add_systems(bevy_egui::EguiContextPass, ui::game_view_panel.after(ui::inspector_panel))
+            .add_systems(bevy_egui::EguiContextPass, ui::shortcuts.after(ui::game_view_panel));
     }
 }
 
