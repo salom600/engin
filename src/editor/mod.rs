@@ -6,7 +6,6 @@ pub mod ui;
 use crate::components;
 use crate::components::*;
 use crate::{demo, scene_io};
-use bevy::hierarchy::Parent;
 use bevy::prelude::*;
 use bevy::render::camera::{Camera, RenderTarget};
 use bevy::render::render_resource::{
@@ -97,7 +96,7 @@ impl Default for ViewportInteraction {
 }
 
 impl ViewportInteraction {
-    fn new_frame(&mut self) {
+    pub fn new_frame(&mut self) {
         self.click = false;
         self.drag_left_started = false;
         self.drag_left_ended = false;
@@ -324,6 +323,7 @@ fn setup_editor_world(
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
         brightness: 45.0,
+        ..default()
     });
 
     // Draw editor gizmos on top of geometry.
@@ -420,20 +420,23 @@ fn editor_camera_system(
     let Ok((mut transform, global)) = q_cam.single_mut() else {
         return;
     };
-    let v = &state.viewport;
+    let (drag_delta, drag_right, drag_middle, hovered, wheel) = {
+        let v = &state.viewport;
+        (v.drag_delta, v.drag_right, v.drag_middle, v.hovered, v.wheel)
+    };
 
-    if v.drag_right {
-        state.orbit_yaw -= v.drag_delta.x * 0.007;
-        state.orbit_pitch = (state.orbit_pitch + v.drag_delta.y * 0.007).clamp(-1.54, 1.54);
+    if drag_right {
+        state.orbit_yaw -= drag_delta.x * 0.007;
+        state.orbit_pitch = (state.orbit_pitch + drag_delta.y * 0.007).clamp(-1.54, 1.54);
     }
-    if v.drag_middle {
+    if drag_middle {
         let right = global.right();
         let up = global.up();
         let k = state.orbit_distance * 0.0015;
-        state.orbit_target -= right * (v.drag_delta.x * k) + up * (v.drag_delta.y * k);
+        state.orbit_target -= right * (drag_delta.x * k) + up * (drag_delta.y * k);
     }
-    if v.hovered && v.wheel.abs() > 0.0 {
-        state.orbit_distance = (state.orbit_distance * (1.0 - v.wheel * 0.0012)).clamp(0.25, 500.0);
+    if hovered && wheel.abs() > 0.0 {
+        state.orbit_distance = (state.orbit_distance * (1.0 - wheel * 0.0012)).clamp(0.25, 500.0);
     }
 
     if let Some(entity) = state.focus_request.take() {
@@ -764,7 +767,7 @@ pub fn handle_request(world: &mut World, request: EditorRequest) {
         }
         EditorRequest::Delete(entity) => {
             if world.entities().contains(entity) {
-                let _ = world.entity_mut(entity).despawn_recursive();
+                let _ = world.entity_mut(entity).despawn();
             }
             if state.selected == Some(entity) {
                 state.selected = None;
@@ -788,7 +791,7 @@ pub fn handle_request(world: &mut World, request: EditorRequest) {
                     None => true,
                 };
                 if valid {
-                    if let Some(old) = world.get::<Parent>(child).map(|p| p.get()) {
+                    if let Some(old) = world.get::<ChildOf>(child).map(|p| p.get()) {
                         if world.entities().contains(old) {
                             world.entity_mut(old).remove_children(&[child]);
                         }
@@ -856,7 +859,7 @@ fn in_subtree(world: &World, root: Entity, entity: Entity) -> bool {
         if current == root {
             return true;
         }
-        match world.get::<Parent>(current) {
+        match world.get::<ChildOf>(current) {
             Some(parent) => current = parent.get(),
             None => return false,
         }

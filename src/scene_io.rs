@@ -7,9 +7,10 @@
 
 use crate::components::*;
 use bevy::ecs::entity::EntityHashMap;
-use bevy::hierarchy::{Children, Parent};
 use bevy::prelude::*;
+use bevy::scene::serde::SceneDeserializer;
 use bevy::scene::DynamicSceneBuilder;
+use serde::de::DeserializeSeed;
 use std::path::Path;
 
 pub type SceneIoResult<T> = Result<T, String>;
@@ -27,10 +28,9 @@ pub fn snapshot_scene(world: &World) -> DynamicScene {
         .allow_component::<Name>()
         .allow_component::<Transform>()
         .allow_component::<Visibility>()
-        .allow_component::<Parent>()
+        .allow_component::<ChildOf>()
         .allow_component::<Children>()
         .allow_component::<PrimitiveMesh>()
-        .allow_component::<PrimitiveShape>()
         .allow_component::<PbrDef>()
         .allow_component::<Rotator>()
         .allow_component::<Bobber>()
@@ -45,11 +45,11 @@ pub fn snapshot_scene(world: &World) -> DynamicScene {
 /// Despawns every scene entity.
 pub fn clear_scene(world: &mut World) {
     let roots: Vec<Entity> = world
-        .query_filtered::<Entity, (With<SceneEntity>, Without<Parent>)>()
+        .query_filtered::<Entity, (With<SceneEntity>, Without<ChildOf>)>()
         .iter(world)
         .collect();
     for entity in roots {
-        let _ = world.entity_mut(entity).despawn_recursive();
+        let _ = world.entity_mut(entity).despawn();
     }
 }
 
@@ -69,8 +69,13 @@ pub fn save_scene(world: &World, path: &Path) -> SceneIoResult<()> {
 /// Returns the number of entities spawned.
 pub fn load_scene(world: &mut World, path: &Path) -> SceneIoResult<usize> {
     let text = std::fs::read_to_string(path).map_err(|e| format!("cannot read file: {e}"))?;
-    let scene: DynamicScene =
-        ron::de::from_str(&text).map_err(|e| format!("invalid scene file: {e}"))?;
+    let registry = world.resource::<AppTypeRegistry>().clone();
+    let registry_guard = registry.read();
+    let mut deserializer =
+        ron::de::Deserializer::from_str(&text).map_err(|e| format!("invalid scene file: {e}"))?;
+    let scene: DynamicScene = SceneDeserializer { type_registry: &registry_guard }
+        .deserialize(&mut deserializer)
+        .map_err(|e| format!("invalid scene file: {e}"))?;
     clear_scene(world);
     let mut map = EntityHashMap::default();
     scene
@@ -99,7 +104,7 @@ fn duplicate_tree_inner(
     if !world.entities().contains(source) {
         return None;
     }
-    let original_parent = world.get::<Parent>(source).map(|p| p.get());
+    let original_parent = world.get::<ChildOf>(source).map(|p| p.get());
     let children: Vec<Entity> = world
         .get::<Children>(source)
         .map(|c| c.iter().copied().collect())

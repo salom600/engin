@@ -32,7 +32,9 @@ fn main() {
                     ..default()
                 }),
         )
-        .add_plugins(EguiPlugin::default())
+        .add_plugins(EguiPlugin {
+            enable_multipass_for_primary_context: false,
+        })
         .add_plugins(bevy::diagnostic::FrameTimeDiagnosticsPlugin::default())
         .add_plugins(editor::EditorPlugin)
         .run();

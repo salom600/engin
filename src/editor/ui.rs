@@ -4,8 +4,6 @@ use crate::components::*;
 use crate::editor::{CompKind, EditorRequest, EditorState, Panels, PlayState, Tool};
 use crate::log_layer;
 use crate::{demo, scene_io};
-use bevy::ecs::entity::Entities;
-use bevy::hierarchy::{Children, Parent};
 use bevy::prelude::*;
 use bevy::render::renderer::RenderAdapterInfo;
 use bevy::window::Window;
@@ -84,7 +82,7 @@ fn do_new_scene(state: &mut EditorState, commands: &mut Commands, spawner: fn(&m
 // Menu bar
 // ---------------------------------------------------------------------------
 
-fn menu_bar(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut commands: Commands) {
+pub fn menu_bar(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut commands: Commands) {
     let ctx = contexts.ctx_mut();
 
     if !state.theme_applied {
@@ -103,25 +101,25 @@ fn menu_bar(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut comm
         egui::menu::bar(ui, |ui| {
             ui.menu_button("File", |ui| {
                 if ui.button("New Scene").clicked() {
-                    do_new_scene(&mut state, &mut commands, demo::spawn_default_scene);
+                    do_new_scene(&mut *state, &mut commands, demo::spawn_default_scene);
                     ui.close_menu();
                 }
                 if ui.button("Open Scene...  Ctrl+O").clicked() {
-                    do_open(&mut state, &mut commands);
+                    do_open(&mut *state, &mut commands);
                     ui.close_menu();
                 }
                 ui.separator();
                 if ui.button("Save Scene  Ctrl+S").clicked() {
-                    do_save(&mut state, &mut commands, false);
+                    do_save(&mut *state, &mut commands, false);
                     ui.close_menu();
                 }
                 if ui.button("Save Scene As...").clicked() {
-                    do_save(&mut state, &mut commands, true);
+                    do_save(&mut *state, &mut commands, true);
                     ui.close_menu();
                 }
                 ui.separator();
                 if ui.button("Load Demo Scene").clicked() {
-                    do_new_scene(&mut state, &mut commands, demo::spawn_demo_world);
+                    do_new_scene(&mut *state, &mut commands, demo::spawn_demo_world);
                     ui.close_menu();
                 }
                 ui.separator();
@@ -157,7 +155,7 @@ fn menu_bar(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut comm
             });
 
             ui.menu_button("Create", |ui| {
-                create_menu(ui, &mut state, EditorRequest::Spawn);
+                create_menu(ui, &mut *state, EditorRequest::Spawn);
             });
 
             ui.menu_button("View", |ui| {
@@ -189,7 +187,7 @@ fn menu_bar(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut comm
     });
 }
 
-fn create_menu(ui: &mut egui::Ui, state: &mut EditorState, make: fn(SpawnKind) -> EditorRequest) {
+fn create_menu(ui: &mut egui::Ui, state: &mut EditorState, make: impl Fn(SpawnKind) -> EditorRequest) {
     if ui.button("Empty Entity").clicked() {
         state.request = Some(make(SpawnKind::Empty));
         ui.close_menu();
@@ -229,7 +227,7 @@ fn panel_toggle(ui: &mut egui::Ui, panels: &mut Panels) {
 // Toolbar
 // ---------------------------------------------------------------------------
 
-fn toolbar(mut contexts: EguiContexts, mut state: ResMut<EditorState>) {
+pub fn toolbar(mut contexts: EguiContexts, mut state: ResMut<EditorState>) {
     let ctx = contexts.ctx_mut();
     egui::TopBottomPanel::top("toolbar").show(ctx, |ui| {
         ui.add_space(2.0);
@@ -340,11 +338,11 @@ fn toolbar(mut contexts: EguiContexts, mut state: ResMut<EditorState>) {
 // Status bar
 // ---------------------------------------------------------------------------
 
-fn status_bar(
+pub fn status_bar(
     mut contexts: EguiContexts,
     mut state: ResMut<EditorState>,
     q_names: Query<&Name>,
-    entities: Res<Entities>,
+    q_all_entities: Query<Entity>,
     diagnostics: Option<Res<bevy::diagnostic::DiagnosticsStore>>,
     adapter: Option<Res<RenderAdapterInfo>>,
 ) {
@@ -365,11 +363,11 @@ fn status_bar(
                         let name = q_names
                             .get(selected)
                             .map(|n| n.as_str().to_string())
-                            .unwrap_or_else(|| "unnamed".into());
+                            .unwrap_or_else(|_| "unnamed".into());
                         ui.label(format!("Selected: {name}"));
                         ui.separator();
                     }
-                    ui.label(format!("{} entities", entities.len()));
+                    ui.label(format!("{} entities", q_all_entities.iter().count()));
                     ui.separator();
                     let fps = diagnostics
                         .as_deref()
@@ -391,19 +389,19 @@ fn status_bar(
 
 type HierarchyQuery<'a> = Query<'a, 'a, (
     Entity,
-    Option<&Name>,
-    Option<&Children>,
-    Has<Parent>,
+    Option<&'a Name>,
+    Option<&'a Children>,
+    Has<ChildOf>,
     Has<EditorInternal>,
     Has<Window>,
-    Option<&PrimitiveMesh>,
+    Option<&'a PrimitiveMesh>,
     Has<PointLight>,
     Has<DirectionalLight>,
     Has<SpotLight>,
-    Option<&Visibility>,
+    Option<&'a Visibility>,
 )>;
 
-fn hierarchy_panel(
+pub fn hierarchy_panel(
     mut contexts: EguiContexts,
     mut state: ResMut<EditorState>,
     mut commands: Commands,
@@ -419,7 +417,7 @@ fn hierarchy_panel(
             ui.heading("Hierarchy");
             ui.horizontal(|ui| {
                 ui.menu_button("+ Add", |ui| {
-                    create_menu(ui, &mut state, EditorRequest::Spawn);
+                    create_menu(ui, &mut *state, EditorRequest::Spawn);
                 });
                 ui.add(
                     egui::TextEdit::singleline(&mut state.hierarchy_filter)
@@ -437,7 +435,7 @@ fn hierarchy_panel(
                         for item in q.iter() {
                             let (entity, _, _, has_parent, internal, window, ..) = item;
                             if !has_parent && !internal && !window {
-                                entity_node(ui, entity, &mut state, &mut commands, &q);
+                                entity_node(ui, entity, &mut *state, &mut commands, &q);
                             }
                         }
                     } else {
@@ -462,7 +460,7 @@ fn hierarchy_panel(
         });
 }
 
-fn entity_label(entity: Entity, name: Option<&Name>) -> String {
+fn entity_label(entity: Entity, name: Option<&'a Name>) -> String {
     name.map(|n| n.as_str().to_string())
         .unwrap_or_else(|| format!("Entity {}", entity.index()))
 }
@@ -502,9 +500,13 @@ fn entity_node(
 
     ui.horizontal(|ui| {
         if has_children {
-            node_state.show_toggle_button(ui, "+");
+            let open = node_state.is_open();
+            let label = if open { "-" } else { "+" };
+            if ui.add(egui::Button::new(label).small()).clicked() {
+                node_state.toggle(ui);
+            }
         } else {
-            ui.add_space(16.0);
+            ui.add_space(22.0);
         }
 
         // Visibility toggle
@@ -557,7 +559,7 @@ fn context_menu(
     response.context_menu(|ui| {
         let is_selected = state.selected == Some(entity);
         ui.menu_button("Create Child", |ui| {
-            create_menu(ui, state, |kind| EditorRequest::SpawnChild(entity, kind));
+            create_menu(ui, &mut *state, |kind| EditorRequest::SpawnChild(entity, kind));
         });
         ui.separator();
         if ui.button("Focus").clicked() {
@@ -609,7 +611,7 @@ fn context_menu(
 // ---------------------------------------------------------------------------
 
 #[allow(clippy::type_complexity)]
-fn inspector_panel(
+pub fn inspector_panel(
     mut contexts: EguiContexts,
     mut state: ResMut<EditorState>,
     mut commands: Commands,
@@ -722,7 +724,7 @@ fn inspector_panel(
                                     }
                                 });
                         });
-                        remove_button(ui, state, sel, CompKind::PrimitiveMesh);
+                        remove_button(ui, &mut *state, sel, CompKind::PrimitiveMesh);
                     });
             }
 
@@ -741,7 +743,7 @@ fn inspector_panel(
                         slider_row(ui, "Roughness", &mut def.perceptual_roughness, 0.0..=1.0);
                         ui.checkbox(&mut def.unlit, "Unlit");
                         ui.checkbox(&mut def.double_sided, "Double-sided");
-                        remove_button(ui, state, sel, CompKind::PbrDef);
+                        remove_button(ui, &mut *state, sel, CompKind::PbrDef);
                     });
             }
 
@@ -757,7 +759,7 @@ fn inspector_panel(
                         color_row(ui, "Color", &mut light.color);
                         slider_row(ui, "Illuminance (lux)", &mut light.illuminance, 0.0..=120_000.0);
                         ui.checkbox(&mut light.shadows_enabled, "Shadows");
-                        remove_button(ui, state, sel, CompKind::DirectionalLight);
+                        remove_button(ui, &mut *state, sel, CompKind::DirectionalLight);
                     });
             }
             if q_pl.get(sel).is_ok() {
@@ -773,7 +775,7 @@ fn inspector_panel(
                         slider_row(ui, "Range (m)", &mut light.range, 0.0..=100.0);
                         slider_row(ui, "Radius (m)", &mut light.radius, 0.0..=10.0);
                         ui.checkbox(&mut light.shadows_enabled, "Shadows");
-                        remove_button(ui, state, sel, CompKind::PointLight);
+                        remove_button(ui, &mut *state, sel, CompKind::PointLight);
                     });
             }
             if q_sl.get(sel).is_ok() {
@@ -794,7 +796,7 @@ fn inspector_panel(
                         slider_row(ui, "Inner angle (°)", &mut inner, 0.0..=89.0);
                         light.inner_angle = inner.to_radians();
                         ui.checkbox(&mut light.shadows_enabled, "Shadows");
-                        remove_button(ui, state, sel, CompKind::SpotLight);
+                        remove_button(ui, &mut *state, sel, CompKind::SpotLight);
                     });
             }
 
@@ -810,7 +812,7 @@ fn inspector_panel(
                         slider_row(ui, "Speed (°/s)", &mut rot.speed_deg_per_sec, -360.0..=360.0);
                         ui.label("Axis:");
                         vec3_drag(ui, &mut rot.axis, 0.02, "axis");
-                        remove_button(ui, state, sel, CompKind::Rotator);
+                        remove_button(ui, &mut *state, sel, CompKind::Rotator);
                     });
             }
             if q_bob.get(sel).is_ok() {
@@ -824,7 +826,7 @@ fn inspector_panel(
                         slider_row(ui, "Amplitude (m)", &mut bob.amplitude, 0.0..=5.0);
                         slider_row(ui, "Frequency (Hz)", &mut bob.frequency, 0.0..=3.0);
                         slider_row(ui, "Phase", &mut bob.phase, 0.0..=std::f32::consts::TAU);
-                        remove_button(ui, state, sel, CompKind::Bobber);
+                        remove_button(ui, &mut *state, sel, CompKind::Bobber);
                     });
             }
 
@@ -834,7 +836,7 @@ fn inspector_panel(
                 component_checklist(
                     ui,
                     sel,
-                    state,
+                    &mut *state,
                     &[
                         (CompKind::PrimitiveMesh, q_meshes.get(sel).is_ok()),
                         (CompKind::PbrDef, q_pbr.get(sel).is_ok()),
@@ -927,12 +929,10 @@ fn vec3_drag(ui: &mut egui::Ui, value: &mut Vec3, speed: f32, _id: &str) {
 }
 
 fn slider_row(ui: &mut egui::Ui, label: &str, value: &mut f32, range: std::ops::RangeInclusive<f32>) {
+    let wide = range.end() - range.start() > 1000.0;
     ui.horizontal(|ui| {
         ui.label(label);
-        ui.add_enabled(
-            true,
-            egui::Slider::new(value, range).logarithmic(range.end() - range.start() > 1000.0),
-        );
+        ui.add(egui::Slider::new(value, range).logarithmic(wide));
     });
 }
 
@@ -964,7 +964,7 @@ fn color_row(ui: &mut egui::Ui, label: &str, color: &mut Color) {
 // Game View
 // ---------------------------------------------------------------------------
 
-fn game_view_panel(
+pub fn game_view_panel(
     mut contexts: EguiContexts,
     mut state: ResMut<EditorState>,
     image: Res<crate::editor::GameViewImage>,
@@ -993,7 +993,7 @@ fn game_view_panel(
                     let name = q_names
                         .get(hovered)
                         .map(|n| n.as_str().to_string())
-                        .unwrap_or_else(|| format!("Entity {}", hovered.index()));
+                        .unwrap_or_else(|_| format!("Entity {}", hovered.index()));
                     ui.weak(format!("under cursor: {name}"));
                 } else {
                     ui.weak("no entity under cursor");
@@ -1115,7 +1115,7 @@ impl AssetNode {
     }
 }
 
-fn bottom_dock(
+pub fn bottom_dock(
     mut contexts: EguiContexts,
     mut state: ResMut<EditorState>,
     mut commands: Commands,
@@ -1337,7 +1337,7 @@ fn console_ui(ui: &mut egui::Ui, state: &mut EditorState) {
 // Keyboard shortcuts
 // ---------------------------------------------------------------------------
 
-fn shortcuts(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut commands: Commands) {
+pub fn shortcuts(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut commands: Commands) {
     let ctx = contexts.ctx_mut();
     if ctx.wants_keyboard_input() {
         return;
@@ -1346,9 +1346,9 @@ fn shortcuts(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut com
     let pressed = |key: egui::Key| ctx.input(|i| i.key_pressed(key));
 
     if ctrl && pressed(egui::Key::S) {
-        do_save(&mut state, &mut commands, false);
+        do_save(&mut *state, &mut commands, false);
     } else if ctrl && pressed(egui::Key::O) {
-        do_open(&mut state, &mut commands);
+        do_open(&mut *state, &mut commands);
     } else if ctrl && pressed(egui::Key::D) {
         if let Some(e) = state.selected {
             state.request = Some(EditorRequest::Duplicate(e));

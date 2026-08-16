@@ -26,6 +26,7 @@ bevy = { version = "=0.16.1", default-features = false, features = [
 ] }
 bevy_egui = "=0.34.1"
 ron = "0.8"
+serde = "1"
 rfd = "0.15"
 
 # Faster runtime in debug builds while keeping compile times reasonable.

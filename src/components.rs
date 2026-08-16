@@ -107,7 +107,7 @@ impl From<&PbrDef> for StandardMaterial {
     fn from(def: &PbrDef) -> Self {
         Self {
             base_color: def.base_color,
-            emissive: def.emissive,
+            emissive: def.emissive.into(),
             metallic: def.metallic,
             perceptual_roughness: def.perceptual_roughness,
             unlit: def.unlit,
@@ -172,7 +172,7 @@ pub fn build_mesh(shape: PrimitiveShape) -> Mesh {
         PrimitiveShape::Cylinder => Cylinder::default().mesh().build(),
         PrimitiveShape::Cone => Cone::default().mesh().build(),
         PrimitiveShape::Capsule => Capsule3d::default().mesh().build(),
-        PrimitiveShape::Icosphere => Sphere::default().mesh().ico(3).unwrap_or_default(),
+        PrimitiveShape::Icosphere => Sphere::default().mesh().uv(32, 18),
     }
 }
 
@@ -313,10 +313,9 @@ pub fn rotator_system(time: Res<Time>, state: Res<EditorState>, mut q: Query<(&R
     let dt = time.delta_secs();
     for (rotator, mut transform) in &mut q {
         let axis = rotator.axis.normalize_or_zero();
-        if axis == Vec3::ZERO {
-            continue;
+        if let Ok(dir) = Dir3::new(axis) {
+            transform.rotate_axis(dir, rotator.speed_deg_per_sec.to_radians() * dt);
         }
-        transform.rotate_axis(axis, rotator.speed_deg_per_sec.to_radians() * dt);
     }
 }
 
