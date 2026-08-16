@@ -212,9 +212,9 @@ pub fn menu_bar(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut 
                 ui.checkbox(&mut state.show_light_gizmos, "Light Markers");
                 ui.separator();
                 if ui.button("Reset Layout").clicked() {
-                    // Clear all stored egui panel state so every panel reverts
-                    // to its default_width / default_height next frame.
-                    ui.ctx().memory_mut(|m| m.areas = Default::default());
+                    // Clear all stored egui panel/area state so every panel
+                    // reverts to its default_width / default_height next frame.
+                    ui.ctx().memory_mut(|m| m.reset_areas());
                     state.hierarchy_width = 270.0;
                     state.inspector_width = 330.0;
                     ui.close_menu();
