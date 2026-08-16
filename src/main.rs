@@ -9,11 +9,31 @@ mod demo;
 mod editor;
 mod log_layer;
 mod scene_io;
+mod settings;
 
 use bevy::{log::LogPlugin, prelude::*};
 use bevy_egui::EguiPlugin;
 
 fn main() {
+    // Restore the window exactly as the user left it (size + position).
+    let saved = settings::load();
+    let window = match &saved {
+        Some(s) => Window {
+            title: "Bevy Editor".to_string(),
+            resolution: (s.window.width, s.window.height).into(),
+            position: s
+                .window
+                .position
+                .map(|(x, y)| bevy::window::WindowPosition::At(IVec2::new(x, y))),
+            ..default()
+        },
+        None => Window {
+            title: "Bevy Editor".to_string(),
+            resolution: (1600.0_f32, 900.0_f32).into(),
+            ..default()
+        },
+    };
+
     App::new()
         .add_plugins(
             DefaultPlugins
@@ -24,11 +44,7 @@ fn main() {
                     ..default()
                 })
                 .set(WindowPlugin {
-                    primary_window: Some(Window {
-                        title: "Bevy Editor".to_string(),
-                        resolution: (1600.0_f32, 900.0_f32).into(),
-                        ..default()
-                    }),
+                    primary_window: Some(window),
                     ..default()
                 }),
         )

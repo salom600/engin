@@ -109,6 +109,26 @@ pub fn menu_bar(mut contexts: EguiContexts, mut state: ResMut<EditorState>, mut 
     };
 
     if !state.theme_applied {
+        // One-time restore of the saved layout: the full egui memory (panel
+        // splitter positions and sizes) plus editor preferences and camera
+        // framing, so the editor opens exactly as the user left it.
+        if let Some(memory) = crate::settings::load_egui_memory() {
+            ctx.memory_mut(|m| *m = memory);
+        }
+        if let Some(saved) = crate::settings::load() {
+            state.panels.hierarchy = saved.hierarchy;
+            state.panels.inspector = saved.inspector;
+            state.panels.assets = saved.assets;
+            state.panels.console = saved.console;
+            state.show_grid = saved.show_grid;
+            state.show_selection_gizmo = saved.show_selection_gizmo;
+            state.show_light_gizmos = saved.show_light_gizmos;
+            state.orbit_target = Vec3::from(saved.orbit_target);
+            state.orbit_yaw = saved.orbit_yaw;
+            state.orbit_pitch = saved.orbit_pitch;
+            state.orbit_distance = saved.orbit_distance;
+        }
+
         let mut visuals = egui::Visuals::dark();
         visuals.panel_fill = egui::Color32::from_rgb(30, 32, 38);
         visuals.extreme_bg_color = egui::Color32::from_rgb(22, 23, 28);

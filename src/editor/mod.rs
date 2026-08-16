@@ -309,7 +309,103 @@ impl Plugin for EditorPlugin {
             .add_systems(bevy_egui::EguiContextPass, ui::hierarchy_panel.after(ui::bottom_dock))
             .add_systems(bevy_egui::EguiContextPass, ui::inspector_panel.after(ui::hierarchy_panel))
             .add_systems(bevy_egui::EguiContextPass, ui::game_view_panel.after(ui::inspector_panel))
-            .add_systems(bevy_egui::EguiContextPass, ui::shortcuts.after(ui::game_view_panel));
+            .add_systems(bevy_egui::EguiContextPass, ui::shortcuts.after(ui::game_view_panel))
+            // Layout persistence: remember window/panel sizes across runs.
+            .init_resource::<WindowState>()
+            .init_resource::<AutosaveTimer>()
+            .add_systems(Update, (track_window_moved, autosave_layout, save_on_exit).chain());
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Layout persistence
+// ---------------------------------------------------------------------------
+
+/// Last known position of the primary window (physical pixels).
+#[derive(Resource, Debug, Clone, Copy, Default)]
+pub struct WindowState {
+    pub position: Option<IVec2>,
+}
+
+#[derive(Resource, Deref, DerefMut)]
+pub struct AutosaveTimer(pub Timer);
+
+impl FromWorld for AutosaveTimer {
+    fn from_world(_world: &mut World) -> Self {
+        Self(Timer::from_seconds(
+            crate::settings::AUTOSAVE_SECS,
+            TimerMode::Repeating,
+        ))
+    }
+}
+
+fn track_window_moved(mut events: EventReader<bevy::window::WindowMoved>, mut window_state: ResMut<WindowState>) {
+    for event in events.read() {
+        window_state.position = Some(event.position);
+    }
+}
+
+fn save_layout_now(
+    contexts: &mut bevy_egui::EguiContexts,
+    q_window: &Query<&Window, With<bevy::window::PrimaryWindow>>,
+    state: &EditorState,
+    window_state: &WindowState,
+) {
+    let Some(ctx) = contexts.try_ctx_mut() else {
+        return;
+    };
+    let Some(window) = q_window.iter().next() else {
+        return;
+    };
+    let layout = crate::settings::LayoutSettings {
+        window: crate::settings::WindowSettings {
+            width: window.width(),
+            height: window.height(),
+            position: window_state.position.map(|p| (p.x, p.y)),
+        },
+        hierarchy: state.panels.hierarchy,
+        inspector: state.panels.inspector,
+        assets: state.panels.assets,
+        console: state.panels.console,
+        show_grid: state.show_grid,
+        show_selection_gizmo: state.show_selection_gizmo,
+        show_light_gizmos: state.show_light_gizmos,
+        orbit_target: state.orbit_target.to_array(),
+        orbit_yaw: state.orbit_yaw,
+        orbit_pitch: state.orbit_pitch,
+        orbit_distance: state.orbit_distance,
+    };
+    crate::settings::save(&layout);
+    let memory = ctx.memory(|m| m.clone());
+    crate::settings::save_egui_memory(&memory);
+}
+
+fn autosave_layout(
+    time: Res<Time>,
+    mut timer: ResMut<AutosaveTimer>,
+    mut contexts: bevy_egui::EguiContexts,
+    q_window: Query<&Window, With<bevy::window::PrimaryWindow>>,
+    state: Res<EditorState>,
+    window_state: Res<WindowState>,
+) {
+    timer.tick(time.delta());
+    if timer.just_finished() {
+        save_layout_now(&mut contexts, &q_window, &state, &window_state);
+    }
+}
+
+/// Final flush when the user closes the window or the app exits.
+fn save_on_exit(
+    mut close_requests: EventReader<bevy::window::WindowCloseRequested>,
+    mut app_exits: EventReader<AppExit>,
+    mut contexts: bevy_egui::EguiContexts,
+    q_window: Query<&Window, With<bevy::window::PrimaryWindow>>,
+    state: Res<EditorState>,
+    window_state: Res<WindowState>,
+) {
+    if close_requests.read().next().is_some() || app_exits.read().next().is_some() {
+        save_layout_now(&mut contexts, &q_window, &state, &window_state);
+        info!("Layout saved");
     }
 }
 

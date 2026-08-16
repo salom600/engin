@@ -1,1 +1,3 @@
 target/
+editor_settings.ron
+editor_egui_memory.ron
