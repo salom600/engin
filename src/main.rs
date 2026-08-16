@@ -26,7 +26,7 @@ fn main() {
                 .set(WindowPlugin {
                     primary_window: Some(Window {
                         title: "Bevy Editor".to_string(),
-                        resolution: (1600.0, 900.0).into(),
+                        resolution: (1600.0_f32, 900.0_f32).into(),
                         ..default()
                     }),
                     ..default()

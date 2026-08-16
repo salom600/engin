@@ -5,7 +5,7 @@
 use bevy::app::App;
 use bevy::log::tracing::{self, Subscriber};
 use bevy::log::tracing_subscriber::layer::Context;
-use bevy::log::tracing_subscriber::{Layer, Registry};
+use bevy::log::tracing_subscriber::Layer;
 use bevy::log::BoxedLayer;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
