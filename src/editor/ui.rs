@@ -12,6 +12,27 @@ use bevy::math::EulerRot;
 use std::path::PathBuf;
 
 // ---------------------------------------------------------------------------
+// Layout guarantees
+//
+// The Game View lives in the root `CentralPanel`, which egui always sizes to
+// the space left over after every side/top/bottom panel. To make sure the
+// panels can never squeeze it to zero, each resizable panel is clamped with a
+// `width_range`/`height_range` computed from the *current* sizes of the other
+// panels, reserving the minimums below for the central area.
+// ---------------------------------------------------------------------------
+
+/// Minimum guaranteed width of the central Game View.
+const CENTRAL_MIN_WIDTH: f32 = 200.0;
+/// Minimum guaranteed height of the central Game View.
+const CENTRAL_MIN_HEIGHT: f32 = 200.0;
+/// Space used by the fixed menu bar + toolbar + status bar (plus margins).
+const BARS_RESERVE: f32 = 100.0;
+const HIERARCHY_MIN_WIDTH: f32 = 180.0;
+const INSPECTOR_MIN_WIDTH: f32 = 220.0;
+const DOCK_MIN_HEIGHT: f32 = 80.0;
+const DOCK_ASSETS_MIN_WIDTH: f32 = 160.0;
+
+// ---------------------------------------------------------------------------
 // File dialog helpers
 // ---------------------------------------------------------------------------
 
@@ -417,9 +438,19 @@ pub fn hierarchy_panel(
     let Some(ctx) = contexts.try_ctx_mut() else {
         return;
     };
-    egui::SidePanel::left("hierarchy_panel")
+    // Never let this panel (plus the inspector's current width) squeeze the
+    // central Game View below CENTRAL_MIN_WIDTH.
+    let screen_width = ctx.screen_rect().width();
+    let inspector = if state.panels.inspector {
+        state.inspector_width
+    } else {
+        0.0
+    };
+    let max_width =
+        (screen_width - CENTRAL_MIN_WIDTH - inspector).max(HIERARCHY_MIN_WIDTH);
+    let panel = egui::SidePanel::left("hierarchy_panel")
         .resizable(true)
-        .min_width(180.0)
+        .width_range(HIERARCHY_MIN_WIDTH..=max_width)
         .default_width(270.0)
         .show(ctx, |ui| {
             ui.heading("Hierarchy");
@@ -466,6 +497,7 @@ pub fn hierarchy_panel(
             ui.separator();
             ui.weak(format!("{} scene entities", q_count.iter().count()));
         });
+    state.hierarchy_width = panel.response.rect.width();
 }
 
 fn entity_label(entity: Entity, name: Option<&Name>) -> String {
@@ -637,9 +669,19 @@ pub fn inspector_panel(
     let Some(ctx) = contexts.try_ctx_mut() else {
         return;
     };
-    egui::SidePanel::right("inspector_panel")
+    // Never let this panel (plus the hierarchy's current width) squeeze the
+    // central Game View below CENTRAL_MIN_WIDTH.
+    let screen_width = ctx.screen_rect().width();
+    let hierarchy = if state.panels.hierarchy {
+        state.hierarchy_width
+    } else {
+        0.0
+    };
+    let max_width =
+        (screen_width - CENTRAL_MIN_WIDTH - hierarchy).max(INSPECTOR_MIN_WIDTH);
+    let panel = egui::SidePanel::right("inspector_panel")
         .resizable(true)
-        .min_width(220.0)
+        .width_range(INSPECTOR_MIN_WIDTH..=max_width)
         .default_width(330.0)
         .show(ctx, |ui| {
             ui.heading("Inspector");
@@ -859,6 +901,7 @@ pub fn inspector_panel(
                 );
             });
         });
+    state.inspector_width = panel.response.rect.width();
 }
 
 fn remove_button(ui: &mut egui::Ui, state: &mut EditorState, entity: Entity, kind: CompKind) {
@@ -1158,16 +1201,24 @@ pub fn bottom_dock(
         return;
     }
 
+    // The dock may never eat the vertical space the central Game View needs.
+    let screen_height = ctx.screen_rect().height();
+    let max_height =
+        (screen_height - BARS_RESERVE - CENTRAL_MIN_HEIGHT).max(DOCK_MIN_HEIGHT);
     egui::TopBottomPanel::bottom("bottom_dock")
         .resizable(true)
-        .min_height(80.0)
+        .height_range(DOCK_MIN_HEIGHT..=max_height)
         .default_height(height)
         .show(ctx, |ui| {
             if state.panels.assets {
+                // Inside the dock: assets take at most 75% so the console
+                // always stays visible next to them.
+                let dock_width = ui.available_width();
+                let assets_max = (dock_width * 0.75).max(DOCK_ASSETS_MIN_WIDTH);
                 egui::SidePanel::left("dock_assets")
                     .resizable(true)
-                    .min_width(160.0)
-                    .default_width(ui.available_width() * 0.42)
+                    .width_range(DOCK_ASSETS_MIN_WIDTH..=assets_max)
+                    .default_width(dock_width * 0.42)
                     .show_inside(ui, |ui| {
                         assets_ui(ui, &mut state, &mut commands, &browser);
                     });

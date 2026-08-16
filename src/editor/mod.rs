@@ -221,6 +221,10 @@ pub struct EditorState {
     pub refresh_assets: bool,
     pub tool_drag: Option<ToolDrag>,
     pub theme_applied: bool,
+    /// Current side panel widths (tracked so the opposite panel can clamp
+    /// against them and the central Game View always keeps >= 200 px).
+    pub hierarchy_width: f32,
+    pub inspector_width: f32,
 }
 
 impl Default for EditorState {
@@ -255,6 +259,8 @@ impl Default for EditorState {
             refresh_assets: false,
             tool_drag: None,
             theme_applied: false,
+            hierarchy_width: 270.0,
+            inspector_width: 330.0,
         }
     }
 }
