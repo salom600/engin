@@ -17,10 +17,8 @@ pub type SceneIoResult<T> = Result<T, String>;
 
 /// Builds a snapshot of every `SceneEntity` entity.
 pub fn snapshot_scene(world: &World) -> DynamicScene {
-    let entities: Vec<Entity> = world
-        .query_filtered::<Entity, With<SceneEntity>>()
-        .iter(world)
-        .collect();
+    let mut query_state = bevy::ecs::query::QueryState::<Entity, With<SceneEntity>>::new();
+    let entities: Vec<Entity> = query_state.iter(world).collect();
 
     DynamicSceneBuilder::from_world(world)
         .deny_all_resources()
@@ -107,7 +105,7 @@ fn duplicate_tree_inner(
     let original_parent = world.get::<ChildOf>(source).map(|p| p.get());
     let children: Vec<Entity> = world
         .get::<Children>(source)
-        .map(|c| c.iter().copied().collect())
+        .map(|c| c.to_vec())
         .unwrap_or_default();
 
     let name = world.get::<Name>(source).map(|n| {

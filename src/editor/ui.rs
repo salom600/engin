@@ -460,7 +460,7 @@ pub fn hierarchy_panel(
         });
 }
 
-fn entity_label(entity: Entity, name: Option<&'a Name>) -> String {
+fn entity_label(entity: Entity, name: Option<&Name>) -> String {
     name.map(|n| n.as_str().to_string())
         .unwrap_or_else(|| format!("Entity {}", entity.index()))
 }
@@ -489,7 +489,7 @@ fn entity_node(
         egui::Color32::from_gray(150)
     };
 
-    let child_ids: Vec<Entity> = children.map(|c| c.iter().copied().collect()).unwrap_or_default();
+    let child_ids: Vec<Entity> = children.map(|c| c.to_vec()).unwrap_or_default();
     let has_children = !child_ids.is_empty();
     let id = egui::Id::new(("hier", e));
     let mut node_state = egui::collapsing_header::CollapsingState::load_with_default_open(
@@ -615,16 +615,16 @@ pub fn inspector_panel(
     mut contexts: EguiContexts,
     mut state: ResMut<EditorState>,
     mut commands: Commands,
-    q_names: Query<&mut Name>,
-    q_transforms: Query<&mut Transform>,
-    q_vis: Query<&mut Visibility>,
-    q_meshes: Query<&mut PrimitiveMesh>,
-    q_pbr: Query<&mut PbrDef>,
-    q_dl: Query<&mut DirectionalLight>,
-    q_pl: Query<&mut PointLight>,
-    q_sl: Query<&mut SpotLight>,
-    q_rot: Query<&mut Rotator>,
-    q_bob: Query<&mut Bobber>,
+    mut q_names: Query<&mut Name>,
+    mut q_transforms: Query<&mut Transform>,
+    mut q_vis: Query<&mut Visibility>,
+    mut q_meshes: Query<&mut PrimitiveMesh>,
+    mut q_pbr: Query<&mut PbrDef>,
+    mut q_dl: Query<&mut DirectionalLight>,
+    mut q_pl: Query<&mut PointLight>,
+    mut q_sl: Query<&mut SpotLight>,
+    mut q_rot: Query<&mut Rotator>,
+    mut q_bob: Query<&mut Bobber>,
 ) {
     let ctx = contexts.ctx_mut();
     egui::SidePanel::right("inspector_panel")
@@ -1023,11 +1023,11 @@ pub fn game_view_panel(
         v.hovered = response.hovered();
         if let Some(pos) = response.interact_pointer_pos() {
             let rect = response.rect;
-            let uv = egui::vec2(
+            let uv = Vec2::new(
                 (pos.x - rect.left()) / rect.width(),
                 (pos.y - rect.top()) / rect.height(),
             );
-            v.pointer_uv = Some(uv.clamp(egui::Vec2::ZERO, egui::Vec2::splat(1.0)));
+            v.pointer_uv = Some(uv.clamp(Vec2::ZERO, Vec2::splat(1.0)));
         } else if !response.dragged() {
             v.pointer_uv = None;
         }
@@ -1041,7 +1041,10 @@ pub fn game_view_panel(
         }
         v.drag_right = response.dragged_by(egui::PointerButton::Secondary);
         v.drag_middle = response.dragged_by(egui::PointerButton::Middle);
-        v.drag_delta = response.drag_delta();
+        v.drag_delta = {
+            let d = response.drag_delta();
+            Vec2::new(d.x, d.y)
+        };
         if v.drag_left {
             v.drag_px += v.drag_delta.length();
         }
@@ -1050,7 +1053,7 @@ pub fn game_view_panel(
         }
 
         let ppp = ui.pixels_per_point();
-        v.desired_px = egui::vec2((size.x * ppp).max(64.0), (size.y * ppp).max(64.0));
+        v.desired_px = Vec2::new((size.x * ppp).max(64.0), (size.y * ppp).max(64.0));
     });
 }
 
