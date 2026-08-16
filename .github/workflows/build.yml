@@ -1,0 +1,97 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-windows:
+    name: Build (windows-latest, release)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # Dependency cache — created on the first run, reused afterwards.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: bevy-editor-win-v1
+          cache-on-failure: true
+
+      - name: Build (release)
+        run: cargo build --release
+
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package | Out-Null
+          Copy-Item target/release/bevy_editor.exe package/
+          Copy-Item -Recurse -Force assets package/
+          Copy-Item README.md package/
+          Compress-Archive -Path package -DestinationPath bevy_editor_windows.zip -Force
+          Get-ChildItem package
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bevy_editor-windows-${{ github.run_number }}
+          path: package/
+          if-no-files-found: error
+
+      - name: Upload to rolling release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create build-latest --title "Latest build" --target $env:GITHUB_SHA --prerelease | Out-Null
+          if ($LASTEXITCODE -ne 0) { gh release delete build-latest --yes; gh release create build-latest --title "Latest build" --target $env:GITHUB_SHA --prerelease | Out-Null }
+          gh release upload build-latest bevy_editor_windows.zip --clobber
+
+  build-linux:
+    name: Build (ubuntu-latest, release)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libasound2-dev libudev-dev pkg-config libxkbcommon-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: bevy-editor-linux-v1
+          cache-on-failure: true
+
+      - name: Build (release)
+        run: cargo build --release
+
+      - name: Package
+        run: |
+          mkdir -p package
+          cp target/release/bevy_editor package/
+          cp -r assets package/
+          cp README.md package/
+          zip -r bevy_editor_linux.zip package
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bevy_editor-linux-${{ github.run_number }}
+          path: package/
+          if-no-files-found: error
+
+      - name: Upload to rolling release
+        if: github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create build-latest --title "Latest build" --target "$GITHUB_SHA" --prerelease >/dev/null 2>&1 || true
+          gh release upload build-latest bevy_editor_linux.zip --clobber

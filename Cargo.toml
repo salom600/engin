@@ -1,0 +1,40 @@
+[package]
+name = "bevy_editor"
+version = "0.1.0"
+edition = "2021"
+description = "A visual engine interface / scene editor for the Bevy engine"
+
+[[bin]]
+name = "bevy_editor"
+path = "src/main.rs"
+
+[dependencies]
+bevy = { version = "=0.16.1", default-features = false, features = [
+    "std",
+    "async_executor",
+    "multi_threaded",
+    "serialize",
+    "bevy_asset",
+    "bevy_scene",
+    "bevy_winit",
+    "bevy_render",
+    "bevy_core_pipeline",
+    "bevy_pbr",
+    "bevy_gizmos",
+    "bevy_log",
+    "tonemapping_luts",
+] }
+bevy_egui = "=0.34.1"
+ron = "0.8"
+rfd = "0.15"
+
+# Faster runtime in debug builds while keeping compile times reasonable.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 4
