@@ -17,8 +17,11 @@ pub type SceneIoResult<T> = Result<T, String>;
 
 /// Builds a snapshot of every `SceneEntity` entity.
 pub fn snapshot_scene(world: &World) -> DynamicScene {
-    let mut query_state = bevy::ecs::query::QueryState::<Entity, With<SceneEntity>>::new();
-    let entities: Vec<Entity> = query_state.iter(world).collect();
+    let entities: Vec<Entity> = world
+        .iter_entities()
+        .filter(|entity| entity.get::<SceneEntity>().is_some())
+        .map(|entity| entity.id())
+        .collect();
 
     DynamicSceneBuilder::from_world(world)
         .deny_all_resources()

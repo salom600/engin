@@ -306,7 +306,7 @@ impl Plugin for EditorPlugin {
                     ui::shortcuts,
                 )
                     .chain(),
-            )
+            );
     }
 }
 
