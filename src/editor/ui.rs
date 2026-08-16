@@ -387,7 +387,7 @@ pub fn status_bar(
 // Hierarchy
 // ---------------------------------------------------------------------------
 
-type HierarchyQuery<'a> = Query<'a, 'a, (
+type HierarchyQuery<'w, 's, 'a> = Query<'w, 's, (
     Entity,
     Option<&'a Name>,
     Option<&'a Children>,
